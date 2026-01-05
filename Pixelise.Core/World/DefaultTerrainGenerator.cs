@@ -1,4 +1,5 @@
 ﻿using Pixelise.Core.Blocks;
+using SysMath = System.Math;
 
 namespace Pixelise.Core.World
 {
@@ -8,136 +9,210 @@ namespace Pixelise.Core.World
         // WORLD SETTINGS
         // ========================
 
-        private const int SeaLevel = 32;
+        private const int SeaLevel = 100;
+        private const int MinY = 0;
+        private const int MaxY = 256;
 
-        private const int BaseHeight = 32;
-        private const int HeightVariation = 24;
+        private const int BeachHeight = 2;
+        private const int SandDepth = 4;
 
-        // fréquences de bruit
-        private const float LowFreq = 0.003f;   // continents
-        private const float MidFreq = 0.01f;    // collines
-        private const float HighFreq = 0.05f;   // détails
+        // ========================
+        // BIOME SETTINGS
+        // ========================
+
+        private static readonly SimplexNoise temperatureNoise = new SimplexNoise(1001);
+        private static readonly SimplexNoise humidityNoise = new SimplexNoise(1002);
+
+        // ========================
+        // TERRAIN NOISE
+        // ========================
+
+        private static readonly SimplexNoise continentalnessNoise = new SimplexNoise(1234);
+        private static readonly SimplexNoise erosionNoise = new SimplexNoise(2345);
+        private static readonly SimplexNoise peaksValleysNoise = new SimplexNoise(3456);
+        private static readonly SimplexNoise caveNoise = new SimplexNoise(4567);
+        private static readonly SimplexNoise spaghettiNoise1 = new SimplexNoise(5678);
+        private static readonly SimplexNoise spaghettiNoise2 = new SimplexNoise(6789);
+        private static readonly SimplexNoise riverNoise = new SimplexNoise(7890);
+        private static readonly SimplexNoise lakeNoise = new SimplexNoise(8901);
+        private static readonly SimplexNoise treeNoise = new SimplexNoise(9001);
 
         // ========================
         // MAIN
         // ========================
 
-        public BlockType GetBlock(int worldX, int worldY, int worldZ)
+        public BlockType GetBlock(int x, int y, int z)
         {
-            var height = GetHeight(worldX, worldZ);
-
-            // 🌊 EAU
-            if (worldY > height && worldY <= SeaLevel)
+            if (y < MinY || y >= MaxY)
             {
-                return BlockType.Water;
+                return BlockType.Air;
             }
 
-            // 🌱 SURFACE
-            if (worldY == height)
+            var density = GetDensity(x, y, z);
+            var isSolid = density > 0;
+
+            // ========================
+            // AIR / WATER
+            // ========================
+
+            if (!isSolid)
             {
-                return BlockType.Grass;
+                if (y <= SeaLevel)
+                {
+                    return BlockType.Water;
+                }
+
+                return BlockType.Air;
             }
 
-            // 🟫 SOUS-SOL
-            if (worldY < height && worldY >= height - 4)
+            var surfaceHeight = GetSurfaceHeight(x, z);
+
+            // ========================
+            // CAVES (UNDERGROUND ONLY)
+            // ========================
+
+            if (y > MinY + 5 && y < surfaceHeight - 6)
             {
+                if (IsInCave(x, y, z))
+                {
+                    return BlockType.Air;
+                }
+            }
+
+            // ========================
+            // SURFACE DETECTION
+            // ========================
+
+            var aboveDensity = GetDensity(x, y + 1, z);
+            if (aboveDensity <= 0)
+            {
+                return GetSurfaceBlock(x, y, z, surfaceHeight);
+            }
+
+            // ========================
+            // SUB-SURFACE
+            // ========================
+
+            if (y > surfaceHeight - SandDepth && y < surfaceHeight)
+            {
+                if (SysMath.Abs(surfaceHeight - SeaLevel) <= BeachHeight)
+                {
+                    return BlockType.Sand;
+                }
+
                 return BlockType.Dirt;
             }
 
-            // 🪨 PROFOND
-            if (worldY < height)
+            return BlockType.Stone;
+        }
+
+        // ========================
+        // SURFACE BLOCK (BIOMES)
+        // ========================
+
+        private BlockType GetSurfaceBlock(int x, int y, int z, int surfaceHeight)
+        {
+            // Beach
+            if (SysMath.Abs(y - SeaLevel) <= BeachHeight)
             {
-                return BlockType.Stone;
+                return BlockType.Sand;
             }
 
-            return BlockType.Air;
+            // Biome values
+            var temp = temperatureNoise.Noise(x * 0.001, z * 0.001);
+            var humidity = humidityNoise.Noise(x * 0.001, z * 0.001);
+
+            // Snow biome
+            if (temp < -0.3 && y > SeaLevel + 10)
+            {
+                return BlockType.Snow;
+            }
+
+            // Desert
+            if (temp > 0.4 && humidity < -0.2)
+            {
+                return BlockType.Sand;
+            }
+
+            // Default grass
+            return BlockType.Grass;
         }
 
         // ========================
-        // HEIGHTMAP (MINECRAFT-LIKE)
+        // DENSITY FUNCTION
         // ========================
 
-        private static int GetHeight(int x, int z)
+        private double GetDensity(int x, int y, int z)
         {
-            // continents larges
-            var continental = Perlin(x, z, LowFreq) * 0.6f;
+            var continentalness = continentalnessNoise.Noise(x * 0.0005, z * 0.0005);
+            var erosion = erosionNoise.Noise(x * 0.001, z * 0.001);
+            var pv = peaksValleysNoise.Noise(x * 0.003, z * 0.003);
 
-            // collines moyennes
-            var hills = Perlin(x, z, MidFreq) * 0.3f;
+            var riverValue = SysMath.Abs(riverNoise.Noise(x * 0.0015, z * 0.0015));
+            var lakeValue = lakeNoise.Noise(x * 0.001, z * 0.001);
 
-            // détails fins
-            var details = Perlin(x, z, HighFreq) * 0.1f;
+            double baseHeight = SeaLevel;
 
-            var noise = continental + hills + details;
+            baseHeight += continentalness > 0
+                ? continentalness * 40
+                : continentalness * 20;
 
-            // normalisation [0..1]
-            noise = (noise + 1f) * 0.5f;
+            baseHeight += erosion * 25;
+            baseHeight += pv * 15;
 
-            var height = BaseHeight + noise * HeightVariation;
+            if (riverValue < 0.08)
+            {
+                baseHeight -= 15.0 * (1.0 - riverValue / 0.08);
+            }
 
-            return (int)System.Math.Floor(height);
+            if (lakeValue > 0.55)
+            {
+                baseHeight -= 12.0 * ((lakeValue - 0.55) / 0.45);
+            }
+
+            var offset = y - baseHeight;
+            var density = -offset / 8.0;
+
+            var noise3d = continentalnessNoise.Noise(x * 0.02, y * 0.02, z * 0.02);
+            density += noise3d * 0.3;
+
+            return density;
         }
 
         // ========================
-        // PERLIN
+        // SURFACE HEIGHT
         // ========================
 
-        private static float Perlin(int x, int z, float freq)
+        private int GetSurfaceHeight(int x, int z)
         {
-            return UnityLikePerlin(x * freq, z * freq);
+            var continentalness = continentalnessNoise.Noise(x * 0.0005, z * 0.0005);
+            var erosion = erosionNoise.Noise(x * 0.001, z * 0.001);
+            var pv = peaksValleysNoise.Noise(x * 0.003, z * 0.003);
+
+            double baseHeight = SeaLevel;
+            baseHeight += continentalness > 0 ? continentalness * 40 : continentalness * 20;
+            baseHeight += erosion * 25;
+            baseHeight += pv * 15;
+
+            return (int)SysMath.Floor(baseHeight);
         }
 
-        // Implémentation Perlin sans dépendance Unity
-        private static float UnityLikePerlin(float x, float y)
+        // ========================
+        // CAVES
+        // ========================
+
+        private bool IsInCave(int x, int y, int z)
         {
-            var x0 = (int)System.Math.Floor(x);
-            var x1 = x0 + 1;
-            var y0 = (int)System.Math.Floor(y);
-            var y1 = y0 + 1;
+            var zone = caveNoise.Noise(x * 0.01, z * 0.01);
+            if (zone < 0.2)
+            {
+                return false;
+            }
 
-            var sx = Fade(x - x0);
-            var sy = Fade(y - y0);
+            var a = spaghettiNoise1.Noise(x * 0.02, y * 0.03, z * 0.02);
+            var b = spaghettiNoise2.Noise(x * 0.02, y * 0.03, z * 0.02);
 
-            var n0 = DotGridGradient(x0, y0, x, y);
-            var n1 = DotGridGradient(x1, y0, x, y);
-            var ix0 = Lerp(n0, n1, sx);
-
-            n0 = DotGridGradient(x0, y1, x, y);
-            n1 = DotGridGradient(x1, y1, x, y);
-            var ix1 = Lerp(n0, n1, sx);
-
-            return Lerp(ix0, ix1, sy);
-        }
-
-        private static float Fade(float t)
-        {
-            return t * t * t * (t * (t * 6 - 15) + 10);
-        }
-
-        private static float Lerp(float a, float b, float t)
-        {
-            return a + t * (b - a);
-        }
-
-        private static float DotGridGradient(int ix, int iy, float x, float y)
-        {
-            var random = Hash(ix, iy);
-
-            var angle = random * System.MathF.PI * 2f;
-            var gx = System.MathF.Cos(angle);
-            var gy = System.MathF.Sin(angle);
-
-            var dx = x - ix;
-            var dy = y - iy;
-
-            return dx * gx + dy * gy;
-        }
-
-        private static float Hash(int x, int y)
-        {
-            var h = x * 374761393 + y * 668265263;
-            h = (h ^ (h >> 13)) * 1274126177;
-            return (h & 0x7fffffff) / (float)int.MaxValue;
+            return SysMath.Abs(a) < 0.08 && SysMath.Abs(b) < 0.08;
         }
     }
 }

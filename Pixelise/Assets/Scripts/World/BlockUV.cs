@@ -36,6 +36,29 @@ namespace World
             Add(BlockType.Snow, BlockFace.Top, 5, 0);
             Add(BlockType.Snow, BlockFace.Bottom, 2, 0);
             AddSides(BlockType.Snow, 6, 0);
+
+            // lEAVES
+            AddAll(BlockType.Leaves, 16, 0);
+
+            // WOOD - OAK
+            Add(BlockType.WoodOak, BlockFace.Top, 14, 0);
+            Add(BlockType.WoodOak, BlockFace.Bottom, 14, 0);
+            AddSides(BlockType.WoodOak, 15, 0);
+
+            // WOOD - BIRCH 
+            Add(BlockType.WoodBirch, BlockFace.Top, 8, 0);
+            Add(BlockType.WoodBirch, BlockFace.Bottom, 8, 0);
+            AddSides(BlockType.WoodBirch, 9, 0);
+
+            // WOOD - DARK OAK
+            Add(BlockType.WoodDarkOak, BlockFace.Top, 12, 0);
+            Add(BlockType.WoodDarkOak, BlockFace.Bottom, 12, 0);
+            AddSides(BlockType.WoodDarkOak, 13, 0);
+
+            // WOOD - ACACIA
+            Add(BlockType.WoodAcacia, BlockFace.Top, 10, 0);
+            Add(BlockType.WoodAcacia, BlockFace.Bottom, 10, 0);
+            AddSides(BlockType.WoodAcacia, 11, 0);
         }
 
         private static void Add(BlockType type, BlockFace face, int x, int y)

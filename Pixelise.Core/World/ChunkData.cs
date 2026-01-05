@@ -6,7 +6,7 @@ namespace Pixelise.Core.World
     public sealed class ChunkData
     {
         public const int Width = 16;
-        public const int Height = 64;
+        public const int Height = 256;
         public const int Depth = 16;
         private readonly BlockType[,,] blocks = new BlockType[Width, Height, Depth];
 
@@ -85,6 +85,5 @@ namespace Pixelise.Core.World
                 blocks[x, y, z] = data[i++];
             }
         }
-
     }
 }

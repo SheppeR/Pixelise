@@ -50,12 +50,12 @@
     <Analyzer Include="H:\Unity\6000.3.2f1\Editor\Data\Tools\BuildPipeline\Unity.SourceGenerators\Unity.UIToolkit.SourceGenerator.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Packages\com.unity.inputsystem\Tests\TestFixture\WinUserInput.cs" />
     <Compile Include="Packages\com.unity.inputsystem\Tests\TestFixture\AssemblyInfo.cs" />
-    <Compile Include="Packages\com.unity.inputsystem\Tests\TestFixture\InputTestRuntime.cs" />
     <Compile Include="Packages\com.unity.inputsystem\Tests\TestFixture\ScopedDisposable.cs" />
-    <Compile Include="Packages\com.unity.inputsystem\Tests\TestFixture\InputTestFixture.cs" />
     <Compile Include="Packages\com.unity.inputsystem\Tests\TestFixture\AssetDatabaseUtils.cs" />
+    <Compile Include="Packages\com.unity.inputsystem\Tests\TestFixture\WinUserInput.cs" />
+    <Compile Include="Packages\com.unity.inputsystem\Tests\TestFixture\InputTestRuntime.cs" />
+    <Compile Include="Packages\com.unity.inputsystem\Tests\TestFixture\InputTestFixture.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Packages\com.unity.inputsystem\Tests\TestFixture\Unity.InputSystem.TestFramework.asmdef" />

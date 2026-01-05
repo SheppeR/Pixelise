@@ -7,6 +7,7 @@
         BlockCommand,
         PlayerTransform,
         ChunkData,
-        PlayerSpawn
+        PlayerSpawn,
+        PlayerChunk
     }
 }

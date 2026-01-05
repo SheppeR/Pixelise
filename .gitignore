@@ -1,0 +1,23 @@
+# Build results
+**/bin/
+**/obj/
+**/.vs/
+**/.plastic/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
+# Logs
+*.log
+
+**/Temp/
+
+# Unity - Library folder
+Pixelise/Library/

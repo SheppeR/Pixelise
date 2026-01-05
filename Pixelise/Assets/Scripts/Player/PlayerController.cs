@@ -1,8 +1,9 @@
-using MessagePack;
+﻿using MessagePack;
 using Network;
+using Pixelise.Core.Math;
 using Pixelise.Core.Network;
+using Pixelise.Core.World;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using Utils;
 using World;
 
@@ -34,6 +35,8 @@ namespace Player
         private CharacterController controller;
         private PlayerInputActions input;
         private bool jumpQueued;
+
+        private Int3 lastChunk;
         private Vector2 lookInput;
 
         private Vector2 moveInput;
@@ -65,6 +68,8 @@ namespace Player
             HandleLook();
             HandleMovement();
             SendMovement();
+
+            SendChunkChange(); // 👈 AJOUT
         }
 
         private void OnEnable()
@@ -89,7 +94,9 @@ namespace Player
         private void OnDisable()
         {
             if (input != null)
+            {
                 input.Player.Disable();
+            }
         }
 
         private void HandleMovement()
@@ -156,6 +163,35 @@ namespace Player
                     {
                         Position = transform.position.ToCore(),
                         Yaw = transform.eulerAngles.y
+                    })
+            });
+        }
+
+        private void SendChunkChange()
+        {
+            if (network == null)
+            {
+                return;
+            }
+
+            var worldPos = transform.position.ToCore();
+            var currentChunk = ChunkUtils.WorldToChunk(worldPos);
+
+            if (currentChunk.X == lastChunk.X &&
+                currentChunk.Z == lastChunk.Z)
+            {
+                return;
+            }
+
+            lastChunk = currentChunk;
+
+            network.Send(new NetPacket
+            {
+                Type = PacketType.PlayerChunk,
+                Payload = MessagePackSerializer.Serialize(
+                    new PlayerChunkPacket
+                    {
+                        ChunkCoord = currentChunk
                     })
             });
         }

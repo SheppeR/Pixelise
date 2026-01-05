@@ -122,10 +122,30 @@ namespace World
                     );
 
                     var neighbor = data.Get(n);
-                    if (BlockRegistry.Get(neighbor).IsSolid &&
-                        !BlockRegistry.Get(neighbor).IsTransparent)
+                    var current = block;
+
+
+                    // AIR : jamais de mesh
+                    if (current == BlockType.Air)
                     {
                         continue;
+                    }
+
+                    // EAU : visible UNIQUEMENT vers l'air
+                    if (current == BlockType.Water)
+                    {
+                        if (neighbor != BlockType.Air)
+                        {
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        // SOLIDE : visible si le voisin n'est pas solide
+                        if (BlockRegistry.Get(neighbor).IsSolid)
+                        {
+                            continue;
+                        }
                     }
 
                     AddFace(

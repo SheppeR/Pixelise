@@ -8,11 +8,15 @@ namespace World
     public class WorldRenderer : MonoBehaviour
     {
         [Header("References")]
-        [SerializeField] private Transform player;
-        [SerializeField] private GameObject chunkPrefab;
+        [SerializeField]
+        private Transform player;
+
+        [SerializeField]
+        private GameObject chunkPrefab;
 
         [Header("Settings")]
-        [SerializeField] private int renderDistance = 6;
+        [SerializeField]
+        private int renderDistance = 6;
 
         private readonly Dictionary<Int3, ChunkView> chunkViews = new();
         private WorldData worldData;
@@ -31,13 +35,10 @@ namespace World
             }
         }
 
-        // ========================
-        // 🔥 NO MORE CLIENT GENERATION
-        // ========================
-
+        // 🔥 IMPORTANT : 1 chunk traité par frame
         private void Update()
         {
-            // plus rien ici : le serveur pousse les chunks
+            WorldEvents.ProcessChunkQueue();
         }
 
         // ========================
@@ -52,7 +53,6 @@ namespace World
                 return;
             }
 
-            // créer la vue
             var obj = Instantiate(chunkPrefab, transform);
             obj.name = $"Chunk_{data.Coord.X}_{data.Coord.Z}";
             obj.transform.position = new Vector3(

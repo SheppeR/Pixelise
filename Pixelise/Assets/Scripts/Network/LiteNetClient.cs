@@ -1,4 +1,6 @@
-﻿using LiteNetLib;
+﻿using System.Net;
+using System.Net.Sockets;
+using LiteNetLib;
 using MessagePack;
 using Pixelise.Core.Network;
 using UnityEngine;
@@ -8,13 +10,13 @@ namespace Network
 {
     public class LiteNetClient : MonoBehaviour, INetEventListener
     {
-        private NetManager client;
-        private NetPeer serverPeer;
-
         [Header("Connection")]
         public string host = "127.0.0.1";
+
         public int port = 9000;
         public string connectionKey = "PixeliseKey";
+        private NetManager client;
+        private NetPeer serverPeer;
 
         private void Start()
         {
@@ -65,6 +67,29 @@ namespace Network
         }
 
         // ========================
+        // UNUSED
+        // ========================
+
+        public void OnConnectionRequest(ConnectionRequest request)
+        {
+        }
+
+        public void OnNetworkError(IPEndPoint endPoint, SocketError socketError)
+        {
+        }
+
+        public void OnNetworkLatencyUpdate(NetPeer peer, int latency)
+        {
+        }
+
+        public void OnNetworkReceiveUnconnected(
+            IPEndPoint remoteEndPoint,
+            NetPacketReader reader,
+            UnconnectedMessageType messageType)
+        {
+        }
+
+        // ========================
         // SEND
         // ========================
 
@@ -78,18 +103,5 @@ namespace Network
             var bytes = MessagePackSerializer.Serialize(packet);
             serverPeer.Send(bytes, DeliveryMethod.ReliableOrdered);
         }
-
-        // ========================
-        // UNUSED
-        // ========================
-
-        public void OnConnectionRequest(ConnectionRequest request) { }
-        public void OnNetworkError(System.Net.IPEndPoint endPoint, System.Net.Sockets.SocketError socketError) { }
-        public void OnNetworkLatencyUpdate(NetPeer peer, int latency) { }
-        public void OnNetworkReceiveUnconnected(
-            System.Net.IPEndPoint remoteEndPoint,
-            NetPacketReader reader,
-            UnconnectedMessageType messageType)
-        { }
     }
 }

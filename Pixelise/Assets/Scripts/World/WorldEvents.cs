@@ -1,6 +1,8 @@
-﻿using MessagePack;
+﻿using System.Collections.Generic;
+using MessagePack;
 using Pixelise.Core.Blocks;
 using Pixelise.Core.Commands;
+using Pixelise.Core.Math;
 using Pixelise.Core.Network;
 using Pixelise.Core.World;
 using UnityEngine;
@@ -12,7 +14,13 @@ namespace World
     {
         private static GameObject localPlayer;
         private static PlayerSpawnPacket pendingSpawn;
-        private static int receivedChunks;
+
+        // 🔥 chunk requis pour le spawn
+        private static Int3 spawnChunk;
+        private static bool spawnChunkReady;
+
+        // 🔥 file de chunks à construire
+        private static readonly Queue<ChunkData> pendingChunks = new();
 
         // ========================
         // PLAYER REGISTRATION
@@ -22,13 +30,6 @@ namespace World
         {
             localPlayer = player;
             localPlayer.SetActive(false);
-
-            // spawn déjà reçu ?
-            if (pendingSpawn != null && receivedChunks > 0)
-            {
-                ApplySpawn(pendingSpawn);
-                pendingSpawn = null;
-            }
         }
 
         // ========================
@@ -39,89 +40,96 @@ namespace World
         {
             switch (packet.Type)
             {
-                // ========================
-                // 🌍 CHUNK DATA (SERVEUR)
-                // ========================
                 case PacketType.ChunkData:
+                {
+                    var data = MessagePackSerializer.Deserialize<ChunkDataPacket>(packet.Payload);
+
+                    UnityMainThreadDispatcher.Enqueue(() =>
                     {
-                        var data = MessagePackSerializer.Deserialize<ChunkDataPacket>(packet.Payload);
+                        var chunkData = new ChunkData(data.ChunkCoord);
+                        chunkData.FromFlatArray(data.Blocks);
 
-                        UnityMainThreadDispatcher.Enqueue(() =>
-                        {
-                            var chunkData = new ChunkData(data.ChunkCoord);
-                            chunkData.FromFlatArray(data.Blocks);
+                        pendingChunks.Enqueue(chunkData);
+                    });
 
-                            var renderer = Object.FindObjectOfType<WorldRenderer>();
-                            if (renderer == null)
-                            {
-                                Debug.LogError("WorldRenderer not found");
-                                return;
-                            }
+                    break;
+                }
 
-                            renderer.AddOrUpdateChunk(chunkData);
-                            receivedChunks++;
-
-                            // spawn en attente ?
-                            if (pendingSpawn != null)
-                            {
-                                ApplySpawn(pendingSpawn);
-                                pendingSpawn = null;
-                            }
-                        });
-
-                        break;
-                    }
-
-                // ========================
-                // 🧍 PLAYER SPAWN
-                // ========================
                 case PacketType.PlayerSpawn:
+                {
+                    var spawn = MessagePackSerializer.Deserialize<PlayerSpawnPacket>(packet.Payload);
+
+                    UnityMainThreadDispatcher.Enqueue(() =>
                     {
-                        var spawn = MessagePackSerializer.Deserialize<PlayerSpawnPacket>(packet.Payload);
+                        pendingSpawn = spawn;
+                        spawnChunk = ChunkUtils.WorldToChunk(spawn.Position);
+                        spawnChunkReady = false;
+                    });
 
-                        UnityMainThreadDispatcher.Enqueue(() =>
-                        {
-                            if (localPlayer == null || receivedChunks == 0)
-                            {
-                                pendingSpawn = spawn;
-                                Debug.Log("Spawn reçu mais monde pas prêt → attente");
-                                return;
-                            }
+                    break;
+                }
 
-                            ApplySpawn(spawn);
-                        });
-
-                        break;
-                    }
-
-                // ========================
-                // 🧱 BLOCK UPDATE
-                // ========================
                 case PacketType.BlockCommand:
+                {
+                    var cmd = MessagePackSerializer.Deserialize<BlockCommand>(packet.Payload);
+
+                    UnityMainThreadDispatcher.Enqueue(() =>
                     {
-                        var cmd = MessagePackSerializer.Deserialize<BlockCommand>(packet.Payload);
-
-                        UnityMainThreadDispatcher.Enqueue(() =>
+                        var view = ChunkViewManager.Get(cmd.ChunkCoord);
+                        if (view == null)
                         {
-                            var view = ChunkViewManager.Get(cmd.ChunkCoord);
-                            if (view == null)
-                            {
-                                Debug.LogWarning($"Chunk not found {cmd.ChunkCoord}");
-                                return;
-                            }
+                            return;
+                        }
 
-                            view.Data.Set(
-                                cmd.LocalPos,
-                                cmd.Action == BlockAction.Break
-                                    ? BlockType.Air
-                                    : cmd.Block
-                            );
+                        view.Data.Set(
+                            cmd.LocalPos,
+                            cmd.Action == BlockAction.Break
+                                ? BlockType.Air
+                                : cmd.Block
+                        );
 
-                            view.Refresh();
-                        });
+                        view.Refresh();
+                    });
 
-                        break;
-                    }
+                    break;
+                }
+            }
+        }
+
+        // ========================
+        // PROCESS CHUNK QUEUE
+        // ========================
+
+        public static void ProcessChunkQueue()
+        {
+            if (pendingChunks.Count == 0)
+            {
+                return;
+            }
+
+            var chunk = pendingChunks.Dequeue();
+
+            var renderer = Object.FindObjectOfType<WorldRenderer>();
+            if (renderer == null)
+            {
+                return;
+            }
+
+            renderer.AddOrUpdateChunk(chunk);
+
+            // 🔥 est-ce le chunk du spawn ?
+            if (pendingSpawn != null &&
+                chunk.Coord.X == spawnChunk.X &&
+                chunk.Coord.Z == spawnChunk.Z)
+            {
+                spawnChunkReady = true;
+            }
+
+            // 🔥 spawn uniquement quand le sol existe
+            if (pendingSpawn != null && spawnChunkReady)
+            {
+                ApplySpawn(pendingSpawn);
+                pendingSpawn = null;
             }
         }
 
@@ -139,7 +147,7 @@ namespace World
 
             localPlayer.SetActive(true);
 
-            Debug.Log($"Player spawned at {spawn.Position.X},{spawn.Position.Y},{spawn.Position.Z}");
+            Debug.Log("Player spawned safely (ground ready)");
         }
     }
 }

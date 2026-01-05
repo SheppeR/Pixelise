@@ -7,8 +7,9 @@ namespace Pixelise.Server.World;
 
 public sealed class WorldSimulation
 {
-    private readonly WorldData world;
     private readonly ITerrainGenerator generator;
+    private readonly TreeGenerator treeGenerator = new();
+    private readonly WorldData world;
 
     public WorldSimulation(WorldData world)
     {
@@ -28,9 +29,18 @@ public sealed class WorldSimulation
             return chunk;
         }
 
+        // charge depuis le disque si possible
+        if (world.TryLoadChunk(coord, out chunk))
+        {
+            return chunk;
+        }
+
+        // sinon génère
         chunk = new ChunkData(coord);
         GenerateChunk(chunk);
         world.AddChunk(chunk);
+        world.SaveChunk(chunk);
+
         return chunk;
     }
 
@@ -39,71 +49,66 @@ public sealed class WorldSimulation
         var chunks = new List<ChunkData>();
 
         for (var x = -radius; x <= radius; x++)
-            for (var z = -radius; z <= radius; z++)
-            {
-                var coord = new Int3(center.X + x, 0, center.Z + z);
-                chunks.Add(GetOrCreateChunk(coord));
-            }
+        for (var z = -radius; z <= radius; z++)
+        {
+            var coord = new Int3(center.X + x, 0, center.Z + z);
+            chunks.Add(GetOrCreateChunk(coord));
+        }
 
         return chunks;
+    }
+
+    public void PreGenerateWorld(Int3 center, int radius)
+    {
+        for (var x = -radius; x <= radius; x++)
+        for (var z = -radius; z <= radius; z++)
+        {
+            var coord = new Int3(center.X + x, 0, center.Z + z);
+            GetOrCreateChunk(coord);
+        }
     }
 
     private void GenerateChunk(ChunkData chunk)
     {
         for (var x = 0; x < ChunkData.Width; x++)
-            for (var y = 0; y < ChunkData.Height; y++)
-                for (var z = 0; z < ChunkData.Depth; z++)
-                {
-                    var worldX = chunk.Coord.X * ChunkData.Width + x;
-                    var worldZ = chunk.Coord.Z * ChunkData.Depth + z;
+        for (var y = 0; y < ChunkData.Height; y++)
+        for (var z = 0; z < ChunkData.Depth; z++)
+        {
+            var worldX = chunk.Coord.X * ChunkData.Width + x;
+            var worldZ = chunk.Coord.Z * ChunkData.Depth + z;
 
-                    var block = generator.GetBlock(worldX, y, worldZ);
-                    chunk.Set(new Int3(x, y, z), block);
-                }
+            // 🔥 seed persistante du monde
+            var block = generator.GetBlock(
+                worldX + world.Seed,
+                y,
+                worldZ + world.Seed);
+
+            chunk.Set(new Int3(x, y, z), block);
+        }
+
+        treeGenerator.GenerateTrees(chunk);
     }
 
     // ========================
-    // SAFE SPAWN
+    // SAFE SPAWN (SIMPLE & NON BLOQUANT)
     // ========================
 
-    public Int3 FindSafeSpawn(Int3 chunkCoord)
+    public Int3 FindSafeSpawn(Int3 centerChunk)
     {
-        var chunk = GetOrCreateChunk(chunkCoord);
+        var worldX = centerChunk.X * ChunkData.Width + ChunkData.Width / 2;
+        var worldZ = centerChunk.Z * ChunkData.Depth + ChunkData.Depth / 2;
 
-        // recherche au centre du chunk
-        var x = ChunkData.Width / 2;
-        var z = ChunkData.Depth / 2;
-
-        // scan vertical du haut vers le bas
-        for (var y = ChunkData.Height - 2; y > 1; y--)
+        // au-dessus du niveau de la mer
+        for (var y = ChunkData.Height - 1; y > 100; y--)
         {
-            var feet = new Int3(x, y, z);
-            var head = new Int3(x, y + 1, z);
-            var ground = new Int3(x, y - 1, z);
-
-            var feetBlock = chunk.Get(feet);
-            var headBlock = chunk.Get(head);
-            var groundBlock = chunk.Get(ground);
-
-            if (feetBlock == BlockType.Air &&
-                headBlock == BlockType.Air &&
-                BlockRegistry.Get(groundBlock).IsSolid)
+            if (GetBlockAt(worldX, y, worldZ) == BlockType.Grass)
             {
-                // position monde
-                return new Int3(
-                    chunk.Coord.X * ChunkData.Width + x,
-                    y,
-                    chunk.Coord.Z * ChunkData.Depth + z
-                );
+                return new Int3(worldX, y + 2, worldZ);
             }
         }
 
-        // fallback ultra-safe
-        return new Int3(
-            chunk.Coord.X * ChunkData.Width + x,
-            ChunkData.Height - 2,
-            chunk.Coord.Z * ChunkData.Depth + z
-        );
+        // fallback sûr
+        return new Int3(worldX, 130, worldZ);
     }
 
     // ========================
@@ -121,57 +126,21 @@ public sealed class WorldSimulation
                 : cmd.Block
         );
 
+        world.SaveChunk(chunk);
         return true;
     }
 
-    public Int3 FindSafeSpawn(Int3 centerChunk, int searchRadius = 2)
+    // ========================
+    // WORLD ACCESS
+    // ========================
+
+    private BlockType GetBlockAt(int worldX, int worldY, int worldZ)
     {
-        Int3 best = default;
-        var bestHeight = -1;
+        var worldPos = new Int3(worldX, worldY, worldZ);
+        var chunkCoord = ChunkUtils.WorldToChunk(worldPos);
+        var chunk = GetOrCreateChunk(chunkCoord);
+        var localPos = ChunkUtils.WorldToLocal(worldPos, chunkCoord);
 
-        for (var cx = -searchRadius; cx <= searchRadius; cx++)
-        for (var cz = -searchRadius; cz <= searchRadius; cz++)
-        {
-            var coord = new Int3(
-                centerChunk.X + cx,
-                0,
-                centerChunk.Z + cz
-            );
-
-            var chunk = GetOrCreateChunk(coord);
-
-            for (var x = 0; x < ChunkData.Width; x++)
-            for (var z = 0; z < ChunkData.Depth; z++)
-            {
-                for (var y = ChunkData.Height - 2; y > 1; y--)
-                {
-                    var feet = new Int3(x, y, z);
-                    var head = new Int3(x, y + 1, z);
-                    var ground = new Int3(x, y - 1, z);
-
-                    if (chunk.Get(feet) != BlockType.Air) continue;
-                    if (chunk.Get(head) != BlockType.Air) continue;
-
-                    var groundBlock = chunk.Get(ground);
-                    if (!BlockRegistry.Get(groundBlock).IsSolid) continue;
-                    if (groundBlock == BlockType.Water) continue;
-
-                    if (y > bestHeight)
-                    {
-                        bestHeight = y;
-                        best = new Int3(
-                            coord.X * ChunkData.Width + x,
-                            y,
-                            coord.Z * ChunkData.Depth + z
-                        );
-                    }
-                }
-            }
-        }
-
-        return bestHeight > 0
-            ? best
-            : new Int3(0, ChunkData.Height - 2, 0);
+        return chunk.Get(localPos);
     }
-
 }
