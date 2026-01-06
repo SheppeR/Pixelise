@@ -4,6 +4,7 @@
 **/.vs/
 **/.plastic/
 
+
 # Visual Studio
 .vs/
 *.user
@@ -21,3 +22,4 @@
 
 # Unity - Library folder
 Pixelise/Library/
+Pixelise/.vs/

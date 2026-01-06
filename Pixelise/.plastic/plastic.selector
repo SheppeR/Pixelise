@@ -1,4 +1,0 @@
-repository "Pixelise 2026-01-02_14-06-12/Pixelise@1403094@cloud"
-  path "/"
-    br "/main"
-    co "/main"

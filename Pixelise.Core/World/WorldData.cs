@@ -49,10 +49,14 @@ namespace Pixelise.Core.World
         // CHUNKS
         // ========================
 
-        public ChunkData GetChunk(Int3 coord)
+        public ChunkData? GetChunk(Int3 coord)
         {
             chunks.TryGetValue(coord, out var chunk);
-            return chunk;
+            if (chunk != null)
+            {
+                return chunk;
+            }
+            return null;
         }
 
         public void AddChunk(ChunkData chunk)

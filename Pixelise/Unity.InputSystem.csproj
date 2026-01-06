@@ -308,8 +308,8 @@
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Plugins\PlayerInput\PlayerInputManager.cs" />
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Editor\Internal\AdvancedDropdown\AdvancedDropdownItem.cs" />
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Editor\UITKAssetEditor\Views\DropManipulator.cs" />
-    <Compile Include="Packages\com.unity.inputsystem\InputSystem\Utilities\SpriteUtilities.cs" />
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\NativeInputRuntime.cs" />
+    <Compile Include="Packages\com.unity.inputsystem\InputSystem\Utilities\SpriteUtilities.cs" />
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Editor\UITKAssetEditor\Views\CollectionViewSelectionChangeFilter.cs" />
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Editor\UITKAssetEditor\SerializedInputBinding.cs" />
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Editor\AssetImporter\InputActionCodeGenerator.cs" />
@@ -384,8 +384,8 @@
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Actions\InputInteractionContext.cs" />
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Editor\ControlPicker\Layouts\DefaultInputControlPickerLayout.cs" />
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Plugins\XInput\XInputControllerWindows.cs" />
-    <Compile Include="Packages\com.unity.inputsystem\InputSystem\Editor\UITKAssetEditor\InputActionsEditorWindowUtils.cs" />
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Utilities\CallbackArray.cs" />
+    <Compile Include="Packages\com.unity.inputsystem\InputSystem\Editor\UITKAssetEditor\InputActionsEditorWindowUtils.cs" />
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Editor\PropertyDrawers\InputActionAssetDrawer.cs" />
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Utilities\Observables\Observable.cs" />
     <Compile Include="Packages\com.unity.inputsystem\InputSystem\Controls\InputControlLayoutAttribute.cs" />
@@ -1024,6 +1024,10 @@
       <HintPath>Assets\Plugins\Pixelise.Core.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.Collections.LowLevel.ILSupport">
+      <HintPath>Library\PackageCache\com.unity.collections@aea9d3bd5e19\Unity.Collections.LowLevel.ILSupport\Unity.Collections.LowLevel.ILSupport.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="nunit.framework">
       <HintPath>Library\PackageCache\com.unity.ext.nunit@d8c07649098d\net40\unity-custom\nunit.framework.dll</HintPath>
       <Private>False</Private>
@@ -1056,6 +1060,10 @@
       <HintPath>Library\PackageCache\com.unity.collab-proxy@3351acaba9c9\Lib\Editor\unityplastic.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.IO.Hashing">
+      <HintPath>Library\PackageCache\com.unity.collections@aea9d3bd5e19\Unity.Collections.Tests\System.IO.Hashing\System.IO.Hashing.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="MessagePack">
       <HintPath>Assets\Packages\MessagePack.3.1.4\lib\netstandard2.1\MessagePack.dll</HintPath>
       <Private>False</Private>
@@ -1080,24 +1088,16 @@
       <HintPath>Library\PackageCache\com.unity.visualscripting@191c0d7e3b69\Editor\VisualScripting.Core\EditorAssetResources\Unity.VisualScripting.TextureAssets.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Mono.Cecil">
+      <HintPath>Library\PackageCache\com.unity.nuget.mono-cecil@ecb9724e46ff\Mono.Cecil.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="System.Collections.Immutable">
       <HintPath>Assets\Packages\System.Collections.Immutable.8.0.0\lib\netstandard2.0\System.Collections.Immutable.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="NugetForUnity">
       <HintPath>Assets\NuGet\Editor\NugetForUnity.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Mono.Cecil">
-      <HintPath>Library\PackageCache\com.unity.nuget.mono-cecil@ecb9724e46ff\Mono.Cecil.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Collections.LowLevel.ILSupport">
-      <HintPath>Library\PackageCache\com.unity.collections@aea9d3bd5e19\Unity.Collections.LowLevel.ILSupport\Unity.Collections.LowLevel.ILSupport.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="System.IO.Hashing">
-      <HintPath>Library\PackageCache\com.unity.collections@aea9d3bd5e19\Unity.Collections.Tests\System.IO.Hashing\System.IO.Hashing.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="netstandard">

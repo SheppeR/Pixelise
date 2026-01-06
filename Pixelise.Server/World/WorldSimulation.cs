@@ -1,21 +1,16 @@
-﻿using Pixelise.Core.Blocks;
+﻿using Microsoft.Extensions.Logging;
+using Pixelise.Core.Blocks;
 using Pixelise.Core.Commands;
 using Pixelise.Core.Math;
 using Pixelise.Core.World;
+using Pixelise.Server.Utils.Logger;
 
 namespace Pixelise.Server.World;
 
-public sealed class WorldSimulation
+public sealed class WorldSimulation(WorldData world, ILogger<WorldSimulation> logger)
 {
-    private readonly ITerrainGenerator generator;
+    private readonly ITerrainGenerator generator = new DefaultTerrainGenerator();
     private readonly TreeGenerator treeGenerator = new();
-    private readonly WorldData world;
-
-    public WorldSimulation(WorldData world)
-    {
-        this.world = world;
-        generator = new DefaultTerrainGenerator();
-    }
 
     // ========================
     // CHUNKS
@@ -44,7 +39,21 @@ public sealed class WorldSimulation
         return chunk;
     }
 
-    public IEnumerable<ChunkData> GenerateWorld(Int3 center, int radius)
+    public IEnumerable<ChunkData> GetChunks(Int3 center, int radius)
+    {
+        var chunks = new List<ChunkData>();
+
+        for (var x = -radius; x <= radius; x++)
+        for (var z = -radius; z <= radius; z++)
+        {
+            var coord = new Int3(center.X + x, 0, center.Z + z);
+            chunks.Add(GetOrCreateChunk(coord));
+        }
+
+        return chunks;
+    }
+
+    public IEnumerable<ChunkData> GetSpawn(Int3 center, int radius)
     {
         var chunks = new List<ChunkData>();
 
@@ -60,12 +69,16 @@ public sealed class WorldSimulation
 
     public void PreGenerateWorld(Int3 center, int radius)
     {
+        logger.Info("Pre-generating world...");
+
         for (var x = -radius; x <= radius; x++)
         for (var z = -radius; z <= radius; z++)
         {
             var coord = new Int3(center.X + x, 0, center.Z + z);
             GetOrCreateChunk(coord);
         }
+
+        logger.Info("World pre-generated.");
     }
 
     private void GenerateChunk(ChunkData chunk)

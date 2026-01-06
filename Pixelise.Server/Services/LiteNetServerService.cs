@@ -2,42 +2,35 @@
 using System.Net.Sockets;
 using LiteNetLib;
 using MessagePack;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Pixelise.Core.Commands;
 using Pixelise.Core.Math;
 using Pixelise.Core.Network;
 using Pixelise.Core.World;
+using Pixelise.Server.Utils.Logger;
 using Pixelise.Server.World;
 
 namespace Pixelise.Server.Services;
 
-public sealed class LiteNetServerService : BackgroundService, INetEventListener
+public sealed class LiteNetServerService : INetEventListener
 {
-    private const int PreGenerateRadius = 8;
-
-    // 🔥 réduit pour limiter les spikes
     private const int WorldRadius = 4;
-    private readonly ILogger<LiteNetServerService> logger;
 
-    // 🔥 cache des chunks envoyés
-    private readonly Dictionary<NetPeer, HashSet<Int3>> sentChunks = new();
-    private readonly NetManager server;
-    private readonly WorldSimulation world;
+    private readonly ILogger<LiteNetServerService> _logger;
 
-    public LiteNetServerService(
-        WorldSimulation world,
-        ILogger<LiteNetServerService> logger)
+    private readonly Dictionary<NetPeer, HashSet<Int3>> _sentChunks = new();
+    private readonly NetManager _server;
+    private readonly WorldSimulation _world;
+
+    private CancellationTokenSource? _cts;
+    private Task? _loopTask;
+
+    public LiteNetServerService(WorldSimulation world, ILogger<LiteNetServerService> logger)
     {
-        this.world = world;
-        this.logger = logger;
+        _world = world;
+        _logger = logger;
 
-        // 🔥 PRÉ-GÉNÉRATION DU MONDE
-        logger.LogInformation("Pre-generating world...");
-        world.PreGenerateWorld(new Int3(0, 0, 0), PreGenerateRadius);
-        logger.LogInformation("World pre-generated.");
-
-        server = new NetManager(this)
+        _server = new NetManager(this)
         {
             AutoRecycle = true
         };
@@ -54,18 +47,18 @@ public sealed class LiteNetServerService : BackgroundService, INetEventListener
 
     public void OnPeerConnected(NetPeer peer)
     {
-        logger.LogInformation($"Client connected: {peer.Address}");
-        sentChunks[peer] = new HashSet<Int3>();
+        _logger.Info($"Client connected: {peer.Address}");
+        _sentChunks[peer] = new HashSet<Int3>();
 
         var centerChunk = new Int3(0, 0, 0);
-        var chunks = world.GenerateWorld(centerChunk, WorldRadius);
+        var chunks = _world.GetSpawn(centerChunk, WorldRadius);
 
         foreach (var chunk in chunks)
         {
             SendChunk(peer, chunk);
         }
 
-        var spawnPos = world.FindSafeSpawn(centerChunk);
+        var spawnPos = _world.FindSafeSpawn(centerChunk);
 
         var spawnPacket = new NetPacket
         {
@@ -86,8 +79,8 @@ public sealed class LiteNetServerService : BackgroundService, INetEventListener
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo info)
     {
-        sentChunks.Remove(peer);
-        logger.LogInformation($"Client disconnected: {peer.Address}");
+        _sentChunks.Remove(peer);
+        _logger.Info($"Client disconnected: {peer.Address}");
     }
 
     // ========================
@@ -108,7 +101,7 @@ public sealed class LiteNetServerService : BackgroundService, INetEventListener
             case PacketType.BlockCommand:
             {
                 var cmd = MessagePackSerializer.Deserialize<BlockCommand>(packet.Payload);
-                world.Apply(cmd);
+                _world.Apply(cmd);
                 Broadcast(packet);
                 break;
             }
@@ -122,7 +115,7 @@ public sealed class LiteNetServerService : BackgroundService, INetEventListener
             case PacketType.PlayerChunk:
             {
                 var msg = MessagePackSerializer.Deserialize<PlayerChunkPacket>(packet.Payload);
-                var chunks = world.GenerateWorld(msg.ChunkCoord, WorldRadius);
+                var chunks = _world.GetChunks(msg.ChunkCoord, WorldRadius);
 
                 foreach (var chunk in chunks)
                 {
@@ -154,12 +147,61 @@ public sealed class LiteNetServerService : BackgroundService, INetEventListener
     }
 
     // ========================
+    // LIFECYCLE
+    // ========================
+
+    public Task StartAsync(CancellationToken ct)
+    {
+        _logger.Info("Starting LiteNetLib server...");
+
+        _server.Start(9000);
+
+        _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        _loopTask = Task.Run(async () =>
+        {
+            while (!_cts.IsCancellationRequested)
+            {
+                _server.PollEvents();
+                await Task.Delay(15, _cts.Token);
+            }
+        }, _cts.Token);
+
+        _logger.Info("LiteNetLib server started on port 9000");
+        return Task.CompletedTask;
+    }
+
+    public async Task StopAsync()
+    {
+        _logger.Info("Stopping LiteNetLib server...");
+
+        if (_cts != null)
+        {
+            await _cts.CancelAsync();
+
+            if (_loopTask != null)
+            {
+                try
+                {
+                    await _loopTask;
+                }
+                catch (OperationCanceledException)
+                {
+                    // ignore
+                }
+            }
+        }
+
+        _server.Stop();
+        _logger.Info("LiteNetLib server stopped.");
+    }
+
+    // ========================
     // SEND
     // ========================
 
     private void SendChunk(NetPeer peer, ChunkData chunk)
     {
-        if (!sentChunks[peer].Add(chunk.Coord))
+        if (!_sentChunks[peer].Add(chunk.Coord))
         {
             return;
         }
@@ -185,28 +227,9 @@ public sealed class LiteNetServerService : BackgroundService, INetEventListener
     {
         var bytes = MessagePackSerializer.Serialize(packet);
 
-        foreach (var peer in server.ConnectedPeerList)
+        foreach (var peer in _server.ConnectedPeerList)
         {
             peer.Send(bytes, DeliveryMethod.ReliableOrdered);
         }
-    }
-
-    // ========================
-    // LOOP
-    // ========================
-
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        server.Start(9000);
-        logger.LogInformation("LiteNetLib server started on port 9000");
-
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            server.PollEvents();
-            Thread.Sleep(15);
-        }
-
-        server.Stop();
-        return Task.CompletedTask;
     }
 }
