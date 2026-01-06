@@ -103,5 +103,20 @@ namespace Pixelise.Core.World
                 worldPath,
                 $"chunk_{coord.X}_{coord.Z}.bin");
         }
+
+        public void RemoveChunk(Int3 coord)
+        {
+            chunks.Remove(coord);
+        }
+
+        public Dictionary<Int3, ChunkData> GetAllChunks()
+        {
+            return chunks;
+        }
+
+        public IEnumerable<Int3> GetAllCoords()
+        {
+            return chunks.Keys;
+        }
     }
 }

@@ -51,19 +51,20 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scripts\World\WorldRenderer.cs" />
+    <Compile Include="Assets\Scripts\World\ClientWorldSync.cs" />
     <Compile Include="Assets\Scripts\Network\LiteNetClient.cs" />
+    <Compile Include="Assets\Scripts\World\ClientSpawnManager.cs" />
+    <Compile Include="Assets\Scripts\Network\ClientNetworkReceiver.cs" />
     <Compile Include="Assets\Scripts\World\BlockUV.cs" />
     <Compile Include="Assets\Scripts\Utils\VectorExtensions.cs" />
-    <Compile Include="Assets\Scripts\World\ChunkViewManager.cs" />
     <Compile Include="Assets\Scripts\Utils\UnityConverter.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerController.cs" />
-    <Compile Include="Assets\Scripts\Utils\UnityMainThreadDispatcher.cs" />
     <Compile Include="Assets\PlayerInputActions.cs" />
     <Compile Include="Assets\Scripts\World\BlockFace.cs" />
     <Compile Include="Assets\Scripts\Player\Crosshair.cs" />
     <Compile Include="Assets\Scripts\World\ChunkMeshBuilder.cs" />
-    <Compile Include="Assets\Scripts\World\WorldEvents.cs" />
     <Compile Include="Assets\Scripts\Player\BlockInteractor.cs" />
+    <Compile Include="Assets\Scripts\World\ClientBlockSync.cs" />
     <Compile Include="Assets\Scripts\World\ChunkView.cs" />
   </ItemGroup>
   <ItemGroup>

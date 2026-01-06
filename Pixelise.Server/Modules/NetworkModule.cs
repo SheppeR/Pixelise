@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
-using Pixelise.Server.Services;
-using Pixelise.Server.Utils.Logger;
-using Pixelise.Server.Utils.Server;
+using Pixelise.Server.Infrastructure.Kernel;
+using Pixelise.Server.Infrastructure.Logging;
+using Pixelise.Server.Infrastructure.Network;
 
 namespace Pixelise.Server.Modules;
 

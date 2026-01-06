@@ -46,21 +46,14 @@ namespace Player
 
         private void Awake()
         {
-            gameObject.SetActive(false);
-            WorldEvents.RegisterLocalPlayer(gameObject);
-
             controller = GetComponent<CharacterController>();
             input = new PlayerInputActions();
 
             if (cameraTransform == null)
-            {
                 cameraTransform = GetComponentInChildren<Camera>().transform;
-            }
 
             if (blockInteractor == null)
-            {
                 blockInteractor = GetComponent<BlockInteractor>();
-            }
         }
 
         private void Update()

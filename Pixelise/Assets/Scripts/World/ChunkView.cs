@@ -1,4 +1,4 @@
-﻿using Pixelise.Core.World;
+using Pixelise.Core.World;
 using UnityEngine;
 
 namespace World
@@ -13,21 +13,15 @@ namespace World
             meshBuilder = GetComponent<ChunkMeshBuilder>();
         }
 
-        private void OnDestroy()
-        {
-            if (Data != null)
-            {
-                ChunkViewManager.Unregister(Data.Coord);
-            }
-        }
-
         public void Init(ChunkData data)
         {
             Data = data;
+            Refresh();
+        }
 
-            // 🔥 REGISTER ICI, PAS AVANT
-            ChunkViewManager.Register(this);
-
+        public void SetData(ChunkData data)
+        {
+            Data = data;
             Refresh();
         }
 

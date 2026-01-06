@@ -1,10 +1,7 @@
-﻿using System.Net;
-using System.Net.Sockets;
 using LiteNetLib;
 using MessagePack;
 using Pixelise.Core.Network;
 using UnityEngine;
-using World;
 
 namespace Network
 {
@@ -12,11 +9,20 @@ namespace Network
     {
         [Header("Connection")]
         public string host = "127.0.0.1";
-
         public int port = 9000;
         public string connectionKey = "PixeliseKey";
+
         private NetManager client;
         private NetPeer serverPeer;
+
+        [Header("Receivers")]
+        [SerializeField] private ClientNetworkReceiver receiver;
+
+        private void Awake()
+        {
+            if (receiver == null)
+                receiver = FindFirstObjectByType<ClientNetworkReceiver>();
+        }
 
         private void Start()
         {
@@ -34,10 +40,6 @@ namespace Network
             client.PollEvents();
         }
 
-        // ========================
-        // CONNECTION
-        // ========================
-
         public void OnPeerConnected(NetPeer peer)
         {
             serverPeer = peer;
@@ -49,59 +51,23 @@ namespace Network
             Debug.Log("Disconnected from server");
         }
 
-        // ========================
-        // RECEIVE
-        // ========================
-
-        public void OnNetworkReceive(
-            NetPeer peer,
-            NetPacketReader reader,
-            byte channel,
-            DeliveryMethod method)
+        public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod method)
         {
-            var packet = MessagePackSerializer.Deserialize<NetPacket>(
-                reader.GetRemainingBytes());
-
-            // 👉 tout passe par WorldEvents
-            WorldEvents.OnPacket(packet);
+            var packet = MessagePackSerializer.Deserialize<NetPacket>(reader.GetRemainingBytes());
+            receiver.OnPacket(packet);
         }
-
-        // ========================
-        // UNUSED
-        // ========================
-
-        public void OnConnectionRequest(ConnectionRequest request)
-        {
-        }
-
-        public void OnNetworkError(IPEndPoint endPoint, SocketError socketError)
-        {
-        }
-
-        public void OnNetworkLatencyUpdate(NetPeer peer, int latency)
-        {
-        }
-
-        public void OnNetworkReceiveUnconnected(
-            IPEndPoint remoteEndPoint,
-            NetPacketReader reader,
-            UnconnectedMessageType messageType)
-        {
-        }
-
-        // ========================
-        // SEND
-        // ========================
 
         public void Send(NetPacket packet)
         {
-            if (serverPeer == null)
-            {
-                return;
-            }
+            if (serverPeer == null) return;
 
             var bytes = MessagePackSerializer.Serialize(packet);
             serverPeer.Send(bytes, DeliveryMethod.ReliableOrdered);
         }
+
+        public void OnConnectionRequest(ConnectionRequest request) { }
+        public void OnNetworkError(System.Net.IPEndPoint endPoint, System.Net.Sockets.SocketError socketError) { }
+        public void OnNetworkLatencyUpdate(NetPeer peer, int latency) { }
+        public void OnNetworkReceiveUnconnected(System.Net.IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType) { }
     }
 }
